@@ -1,7 +1,7 @@
 // Methods: the training pipeline of SSL and SL, drawn as an SVG after the
 // thesis figure (data -> encoder -> loss, backbone handed to fine-tuning),
 // plus a short explanation of each method's loss.
-import { $, el, segmented } from "./ui.js";
+import { $, el, segmented, versioned } from "./ui.js";
 
 const NS = "http://www.w3.org/2000/svg";
 
@@ -120,7 +120,7 @@ function lossTerms(...terms) {
       cards[i].lastChild.textContent = cue(u === t);
     });
     panel.replaceChildren(
-      el("div", { class: `loss-figure-img ${t.figure.shape}` }, el("img", { src: t.figure.src, alt: t.figure.alt, decoding: "async" })),
+      el("div", { class: `loss-figure-img ${t.figure.shape}` }, el("img", { src: versioned(t.figure.src), alt: t.figure.alt, decoding: "async" })),
       el(
         "figcaption",
         {},

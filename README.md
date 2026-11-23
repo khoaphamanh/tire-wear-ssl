@@ -56,6 +56,16 @@ python -m http.server 8000
 # open http://localhost:8000
 ```
 
+## Deploying a change
+
+GitHub Pages lets browsers cache files for 10 minutes, so a new `index.html` can meet old,
+cached scripts and break. Every asset URL therefore carries a version (`?v=2`). Before each
+push, bump it in `index.html`; the scripts read it from there for data and image URLs:
+
+```bash
+sed -i '' 's/?v=2"/?v=3"/g' index.html   # macOS sed; use the next number each time
+```
+
 ## Contact
 
 Anh Khoa Pham · [github.com/khoaphamanh](https://github.com/khoaphamanh)

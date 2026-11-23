@@ -10,13 +10,18 @@ export const METHODS = {
 };
 export const isSSL = (approach) => METHODS[approach]?.kind === "SSL";
 
+// The asset version set in index.html (this module is loaded as ui.js?v=...),
+// appended to data and image URLs so a deploy is never mixed with cached files.
+const VERSION = new URL(import.meta.url).searchParams.get("v");
+export const versioned = (path) => (VERSION ? `${path}?v=${VERSION}` : path);
+
 const cache = new Map();
 
 export function getJSON(path) {
   if (!cache.has(path)) {
     cache.set(
       path,
-      fetch(path).then((r) => {
+      fetch(versioned(path)).then((r) => {
         if (!r.ok) throw new Error(`${path}: HTTP ${r.status}`);
         return r.json();
       })

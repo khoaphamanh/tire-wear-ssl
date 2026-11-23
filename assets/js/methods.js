@@ -92,9 +92,94 @@ const sym = (base, sub) => el("span", { class: "sym" }, base, sub ? el("sub", {}
 const pos = (text) => el("span", { class: "pair pos" }, text);
 const neg = (text) => el("span", { class: "pair neg" }, text);
 
-function term(symbol, name, ...body) {
-  return el("div", { class: "loss-term" }, el("div", {}, symbol, el("span", { class: "name" }, name)), el("p", {}, ...body));
+// one term of a loss; `figure` (the thesis illustration of the term) makes it clickable
+function term(symbol, name, figure, ...body) {
+  return { symbol, name, figure, body };
 }
+
+// grid of loss terms; clicking a term with a figure shows that figure below the grid
+function lossTerms(...terms) {
+  const panel = el("figure", { class: "loss-figure", id: "loss-figure", hidden: true });
+  const cue = (on) => (on ? "Figure shown below" : "Click to show figure");
+  const cards = terms.map((t) => {
+    const head = el("div", { class: "loss-term-head" }, t.symbol, el("span", { class: "name" }, t.name));
+    if (!t.figure) return el("div", { class: "loss-term" }, head, el("p", {}, ...t.body));
+    return el(
+      "button",
+      { type: "button", class: "loss-term clickable", "aria-pressed": "false", "aria-controls": "loss-figure", onclick: () => show(t) },
+      head,
+      el("p", {}, ...t.body),
+      el("span", { class: "loss-term-cue" }, cue(false))
+    );
+  });
+
+  function show(t) {
+    terms.forEach((u, i) => {
+      if (!u.figure) return;
+      cards[i].setAttribute("aria-pressed", String(u === t));
+      cards[i].lastChild.textContent = cue(u === t);
+    });
+    panel.replaceChildren(
+      el("div", { class: `loss-figure-img ${t.figure.shape}` }, el("img", { src: t.figure.src, alt: t.figure.alt, decoding: "async" })),
+      el(
+        "figcaption",
+        {},
+        el("span", { class: "loss-figure-title" }, t.symbol.cloneNode(true), ` · ${t.name} loss. `),
+        t.figure.caption
+      )
+    );
+    panel.hidden = false;
+  }
+
+  // the first illustrated term is open from the start
+  const first = terms.find((t) => t.figure);
+  if (first) show(first);
+  return [el("div", { class: "loss-terms" }, ...cards), panel];
+}
+
+// illustrations from the thesis (synthetic signals), one per contrastive term
+const FIG = {
+  time: {
+    src: "assets/img/tfc_time_branches.svg",
+    shape: "tall",
+    alt: "Two time-domain windows and their augmented copies pass through the time encoder; arcs mark the positive pair of each window and the negative pairs between windows.",
+    caption:
+      "A batch of two windows (blue: window 1, red: window 2). Each window and its augmented copy pass through the shared time encoder. " +
+      "A colored arc (≈) marks the positive pair of a window and its augmentation, a black arc (≠) a negative pair of views of different windows.",
+  },
+  freq: {
+    src: "assets/img/tfc_freq_branches.svg",
+    shape: "tall",
+    alt: "Two spectra and their augmented copies pass through the frequency encoder; arcs mark the positive pair of each spectrum and the negative pairs between windows.",
+    caption:
+      "The same structure in the frequency domain: each spectrum and its augmented copy pass through the shared frequency encoder. " +
+      "A colored arc (≈) marks a positive pair, a black arc (≠) a negative pair of views of different windows.",
+  },
+  cross: {
+    src: "assets/img/tfc_cross_branches.svg",
+    shape: "tall",
+    alt: "Time and frequency view of two windows, each passed through its encoder and projection head; arcs mark the time-frequency positive pair of each window.",
+    caption:
+      "Each window is encoded in its time view and its frequency view, each through its own encoder and projection head. " +
+      "The time and the frequency embedding of the same window form the positive pair (≈); views of different windows are negatives (≠).",
+  },
+  temp: {
+    src: "assets/img/ts2vec_temporal_loss.svg",
+    shape: "wide",
+    alt: "One window cropped into two overlapping segments; the anchor time step of segment 1 is positive with the same time step of segment 2 and negative with all other time steps.",
+    caption:
+      "Reduced to a single anchor. One window is cropped into two overlapping segments (blue and red), and the encoder gives one representation per time step of the overlap. " +
+      "The anchor (dashed) is positive with the same time step of the other segment (green =) and negative with every other time step, in either segment (≠).",
+  },
+  inst: {
+    src: "assets/img/ts2vec_instance_loss.svg",
+    shape: "wide",
+    alt: "Two windows of a batch, each cropped into two segments; the anchor is positive with the same time step of its own second segment and negative with the same time step of the other window.",
+    caption:
+      "Reduced to a single anchor. Two windows of the same batch are each cropped into two overlapping segments. The anchor (dashed) is positive with the same " +
+      "time step of the other segment of its own window (green =) and negative with the same time step in either segment of the other window (≠).",
+  },
+};
 
 const LOSSES = {
   tfc: () => [
@@ -105,12 +190,10 @@ const LOSSES = {
       "Each window is encoded twice: as the raw signal (time domain) and as its spectrum (frequency domain). " +
         "All three terms are contrastive: they pull a positive pair together and push the other windows of the batch apart."
     ),
-    el(
-      "div",
-      { class: "loss-terms" },
-      term(sym("L", "T"), "time", pos("Positive pair:"), " a window and its augmented copy (jitter, scaling, masking)."),
-      term(sym("L", "F"), "frequency", pos("Positive pair:"), " a spectrum and its augmented copy (frequency components removed or added)."),
-      term(sym("L", "TF"), "consistency", pos("Positive pair:"), " the time and the frequency embedding of the same window.")
+    ...lossTerms(
+      term(sym("L", "T"), "time", FIG.time, pos("Positive pair:"), " a window and its augmented copy (jitter, scaling, masking)."),
+      term(sym("L", "F"), "frequency", FIG.freq, pos("Positive pair:"), " a spectrum and its augmented copy (frequency components removed or added)."),
+      term(sym("L", "TF"), "consistency", FIG.cross, pos("Positive pair:"), " the time and the frequency embedding of the same window.")
     ),
     el(
       "div",
@@ -133,12 +216,10 @@ const LOSSES = {
       "Two random crops of the same window overlap in time. At every time step of the overlap, both crops must give the same " +
         "representation, although each crop sees a different context."
     ),
-    el(
-      "div",
-      { class: "loss-terms" },
-      term(sym("L", "temp"), "temporal", pos("Positive:"), " the same time step in both crops. ", neg("Negatives:"), " the other time steps of the same window."),
-      term(sym("L", "inst"), "instance-wise", pos("Positive:"), " the same time step in both crops. ", neg("Negatives:"), " the same time step in the other windows of the batch."),
-      term(sym("L", "hier"), "hierarchical", "Both terms are repeated after max pooling over time, from single time steps up to the whole window, and averaged.")
+    ...lossTerms(
+      term(sym("L", "temp"), "temporal", FIG.temp, pos("Positive:"), " the same time step in both crops. ", neg("Negatives:"), " the other time steps of the same window."),
+      term(sym("L", "inst"), "instance-wise", FIG.inst, pos("Positive:"), " the same time step in both crops. ", neg("Negatives:"), " the same time step in the other windows of the batch."),
+      term(sym("L", "hier"), "hierarchical", null, "Both terms are repeated after max pooling over time, from single time steps up to the whole window, and averaged.")
     ),
     el(
       "div",
@@ -387,6 +468,7 @@ export function initMethods() {
   const container = $("#pipeline");
   const methodGroup = $("#method-switch");
   let lastWidth = 0;
+  let lastMethod = null;
 
   function render(animate = true) {
     const W = Math.floor(container.clientWidth);
@@ -398,7 +480,11 @@ export function initMethods() {
     const root = svg("svg", { viewBox: `0 0 ${W} ${height}`, width: W, height, class: animate ? "fade" : null, "aria-hidden": "true" }, nodes);
     container.replaceChildren(root);
     fitText(root);
-    $("#loss-box").replaceChildren(...LOSSES[method]());
+    // a resize redraws only the diagram, so the chosen loss figure stays open
+    if (method !== lastMethod) {
+      lastMethod = method;
+      $("#loss-box").replaceChildren(...LOSSES[method]());
+    }
   }
 
   function fillMethods() {

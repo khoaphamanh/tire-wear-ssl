@@ -292,7 +292,28 @@ section:first-of-type { border-top: 0; }
 .loss-box h3 { font-size: 17px; margin-bottom: 6px; }
 .loss-box > p { color: var(--ink-2); font-size: 15px; max-width: 860px; }
 .loss-terms { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 14px; }
-.loss-term { background: var(--surface-sunk); border-radius: 8px; padding: 12px 14px; }
+.loss-term { background: var(--surface-sunk); border-radius: 8px; padding: 12px 14px; border: 1px solid transparent; }
+button.loss-term {
+  display: flex; flex-direction: column; align-items: stretch; text-align: left; width: 100%;
+  font: inherit; color: inherit; cursor: pointer; transition: border-color 0.15s, background 0.15s;
+}
+button.loss-term:hover { border-color: var(--axis); }
+button.loss-term[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-wash); }
+button.loss-term:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.loss-term-cue { margin-top: auto; padding-top: 8px; font-size: 12.5px; color: var(--muted); }
+.loss-term-cue::before { content: "▸ "; }
+button.loss-term[aria-pressed="true"] .loss-term-cue { color: var(--accent); }
+button.loss-term[aria-pressed="true"] .loss-term-cue::before { content: "▾ "; }
+/* the thesis figures are drawn on white, so they sit on a white sheet */
+.loss-figure { margin: 14px 0 0; background: var(--surface-sunk); border-radius: 8px; padding: 14px; animation: plFade 0.25s ease-out; }
+.loss-figure-img { background: #ffffff; border-radius: 6px; padding: 10px; margin: 0 auto; }
+.loss-figure-img.tall { max-width: 440px; }
+.loss-figure-img.wide { max-width: 980px; }
+.loss-figure-img img { display: block; width: 100%; height: auto; }
+.loss-figure figcaption { font-size: 14px; color: var(--ink-2); margin: 12px auto 0; max-width: 860px; }
+.loss-figure-title { color: var(--ink); font-weight: 650; }
+.loss-figure-title .sym { font-family: Georgia, "Times New Roman", serif; font-style: italic; font-weight: 400; font-size: 16px; }
+.loss-figure-title .sym sub { font-style: normal; font-family: var(--font); font-size: 11px; }
 .loss-term .sym { font-family: Georgia, "Times New Roman", serif; font-style: italic; font-size: 17px; color: var(--ink); }
 .loss-term .sym sub { font-style: normal; font-family: var(--font); font-size: 11.5px; }
 .loss-term .name { font-size: 13px; font-weight: 650; color: var(--ink); margin-left: 6px; }
@@ -317,8 +338,6 @@ section:first-of-type { border-top: 0; }
   background: var(--ink); color: var(--page);
 }
 .hint { font-size: 13.5px; color: var(--muted); margin-top: 6px; }
-.run-detail-head { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: baseline; margin: 6px 0 4px; }
-.run-detail-head h3 { font-size: 16px; }
 
 /* ------------------------------------------------------------------ findings */
 .finding { display: flex; flex-direction: column; gap: 8px; }

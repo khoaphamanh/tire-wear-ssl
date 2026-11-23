@@ -19,15 +19,15 @@ at all in training.
 
 * **Motivation**: the test platform, its flat-spotted tires, and why labels are scarce.
 * **Data**: sensor time series, windowing, labels, and the train/test split.
-* **Methods**: the SSL and SL training pipelines and the loss of each method.
+* **Methods**: the SSL and SL training pipelines and the loss of each method, with the
+  thesis illustration of each contrastive loss term.
 * **Results**: the test error of the best configuration per method.
-* **Prediction explorer**: any two methods side by side, run by run and per seed, down to
-  the predictions of individual 5 s windows.
+* **Prediction explorer**: any two methods side by side, run by run and per seed.
 
 ## What is (not) published
 
 Only results: metrics, per-run predictions and wear labels of the best configuration per
-method, stored in `data/` (about 0.2 MB of JSON). Raw recordings, run metadata, and trained
+method, stored in `data/` (about 0.1 MB of JSON). Raw recordings, run metadata, and trained
 weights are not included.
 
 The JSON bundle is exported from the final multi-seed runs by a script in the (private)
@@ -40,9 +40,10 @@ stops if it does not reproduce the thesis tables.
 index.html                 the page
 assets/css/style.css       dark theme
 assets/js/*.js             one ES module per section, no build step
+assets/img/                loss illustrations from the thesis (synthetic signals)
 assets/vendor/             Plotly.js 2.35.2 basic bundle (MIT license)
 data/summary.json          ranking and dataset facts
-data/stages/*.json         per method: run- and window-level predictions of every seed
+data/stages/*.json         per method: run-level predictions of every seed
 ```
 
 ## Run locally

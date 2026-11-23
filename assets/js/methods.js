@@ -190,11 +190,6 @@ const LOSSES = {
       "Each window is encoded twice: as the raw signal (time domain) and as its spectrum (frequency domain). " +
         "All three terms are contrastive: they pull a positive pair together and push the other windows of the batch apart."
     ),
-    ...lossTerms(
-      term(sym("L", "T"), "time", FIG.time, pos("Positive pair:"), " a window and its augmented copy (jitter, scaling, masking)."),
-      term(sym("L", "F"), "frequency", FIG.freq, pos("Positive pair:"), " a spectrum and its augmented copy (frequency components removed or added)."),
-      term(sym("L", "TF"), "consistency", FIG.cross, pos("Positive pair:"), " the time and the frequency embedding of the same window.")
-    ),
     el(
       "div",
       { class: "loss-formula" },
@@ -206,6 +201,11 @@ const LOSSES = {
       ") + (1 − λ) ",
       sym("L", "TF"),
       el("span", { class: "note" }, "λ = 0.5")
+    ),
+    ...lossTerms(
+      term(sym("L", "T"), "time", FIG.time, pos("Positive pair:"), " a window and its augmented copy (jitter, scaling, masking)."),
+      term(sym("L", "F"), "frequency", FIG.freq, pos("Positive pair:"), " a spectrum and its augmented copy (frequency components removed or added)."),
+      term(sym("L", "TF"), "consistency", FIG.cross, pos("Positive pair:"), " the time and the frequency embedding of the same window.")
     ),
   ],
   ts2vec: () => [

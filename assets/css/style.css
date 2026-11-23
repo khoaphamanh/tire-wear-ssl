@@ -304,12 +304,17 @@ button.loss-term:focus-visible { outline: 2px solid var(--accent); outline-offse
 .loss-term-cue::before { content: "▸ "; }
 button.loss-term[aria-pressed="true"] .loss-term-cue { color: var(--accent); }
 button.loss-term[aria-pressed="true"] .loss-term-cue::before { content: "▾ "; }
-/* the thesis figures are drawn on white, so they sit on a white sheet */
-.loss-figure { margin: 14px 0 0; background: var(--surface-sunk); border-radius: 8px; padding: 14px; animation: plFade 0.25s ease-out; }
-.loss-figure-img { background: #ffffff; border-radius: 6px; padding: 10px; margin: 0 auto; }
+/* The thesis figures are drawn on white. Inverting them and turning the hue back by
+   180° gives a black background and light lines, while blue, red and green keep their
+   hue; the panel is black so the figure blends into it. */
+.loss-figure {
+  margin: 14px 0 0; background: #000000; border: 1px solid var(--border); border-radius: 8px;
+  padding: 14px; animation: plFade 0.25s ease-out;
+}
+.loss-figure-img { margin: 0 auto; }
 .loss-figure-img.tall { max-width: 440px; }
 .loss-figure-img.wide { max-width: 980px; }
-.loss-figure-img img { display: block; width: 100%; height: auto; }
+.loss-figure-img img { display: block; width: 100%; height: auto; filter: invert(1) hue-rotate(180deg); }
 .loss-figure figcaption { font-size: 14px; color: var(--ink-2); margin: 12px auto 0; max-width: 860px; }
 .loss-figure-title { color: var(--ink); font-weight: 650; }
 .loss-figure-title .sym { font-family: Georgia, "Times New Roman", serif; font-style: italic; font-weight: 400; font-size: 16px; }

@@ -216,11 +216,6 @@ const LOSSES = {
       "Two random crops of the same window overlap in time. At every time step of the overlap, both crops must give the same " +
         "representation, although each crop sees a different context."
     ),
-    ...lossTerms(
-      term(sym("L", "temp"), "temporal", FIG.temp, pos("Positive:"), " the same time step in both crops. ", neg("Negatives:"), " the other time steps of the same window."),
-      term(sym("L", "inst"), "instance-wise", FIG.inst, pos("Positive:"), " the same time step in both crops. ", neg("Negatives:"), " the same time step in the other windows of the batch."),
-      term(sym("L", "hier"), "hierarchical", null, "Both terms are repeated after max pooling over time, from single time steps up to the whole window, and averaged.")
-    ),
     el(
       "div",
       { class: "loss-formula" },
@@ -230,6 +225,11 @@ const LOSSES = {
       " + (1 − α) ",
       sym("L", "temp"),
       el("span", { class: "note" }, "α = 0.5, averaged over all pooling levels")
+    ),
+    ...lossTerms(
+      term(sym("L", "temp"), "temporal", FIG.temp, pos("Positive:"), " the same time step in both crops. ", neg("Negatives:"), " the other time steps of the same window."),
+      term(sym("L", "inst"), "instance-wise", FIG.inst, pos("Positive:"), " the same time step in both crops. ", neg("Negatives:"), " the same time step in the other windows of the batch."),
+      term(sym("L", "hier"), "hierarchical", null, "Both terms are repeated after max pooling over time, from single time steps up to the whole window, and averaged.")
     ),
   ],
   inception: () => [

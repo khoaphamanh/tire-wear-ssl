@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tire Wear Estimation</title>
+  <meta name="description" content="Master's thesis: estimating tire wear of a vehicle test platform from sensor time series. Self-supervised pretraining on unlabeled data against supervised learning on the few labels.">
+  <meta property="og:title" content="Tire Wear Estimation with Self-Supervised Pretraining">
+  <meta property="og:description" content="Unlabeled data is abundant, labels are scarce. Self-supervised pretraining cuts the error by 54 % compared with the best supervised method.">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#000000">
+  <!-- the page is dark by design; keep Dark Reader from repainting the charts -->
+  <meta name="darkreader-lock">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%239085e9' stroke-width='5'/%3E%3Cpath d='M9 26h14' stroke='%239085e9' stroke-width='5'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="container">
+    <a class="brand" href="#top">Tire wear · SSL</a>
+    <nav class="nav" aria-label="Sections">
+      <a href="#motivation">Motivation</a>
+      <a href="#data">Data</a>
+      <a href="#methods">Methods</a>
+      <a href="#results">Results</a>
+      <a href="#explorer">Explorer</a>
+      <a href="#findings">Findings</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+<!-- ============================================================ HERO -->
+<section id="top" class="hero">
+  <div class="container">
+    <div class="eyebrow">Master's thesis · Leibniz Universität Hannover · 2026</div>
+    <h1>Estimating tire wear from operating signals with self-supervised pretraining</h1>
+
+    <div class="tldr" aria-label="TL;DR">
+      <div class="tldr-tag">TL;DR</div>
+      <dl>
+        <div><dt>Problem</dt><dd>In industry, machines record far more data than anyone can label: unlabeled data is abundant, labeled data is scarce and expensive.</dd></div>
+        <div><dt>Question</dt><dd>How can the unlabeled data improve supervised learning (SL) when only a few labeled samples exist?</dd></div>
+        <div><dt>Answer</dt><dd>Self-supervised learning (SSL): pretrain a model on the unlabeled data, then fine-tune it on the few labels.</dd></div>
+        <div><dt>Result</dt><dd>On tire-wear estimation for a vehicle test platform, SSL cuts the error by <strong id="tldr-gain">54 %</strong> compared with the best conventional SL method trained on the labeled data alone (<span id="tldr-detail">0.28 mm vs 0.60 mm</span> mean absolute error).</dd></div>
+      </dl>
+    </div>
+
+    <div class="byline">
+      <span>Anh Khoa Pham</span>
+      <a href="https://github.com/khoaphamanh" rel="noopener">github.com/khoaphamanh</a>
+    </div>
+    <div class="cta">
+      <a class="btn primary" href="#explorer">Explore the predictions</a>
+      <a class="btn" href="#methods">How it works</a>
+    </div>
+
+    <div class="hero-stats" id="hero-stats" aria-live="polite">
+      <div class="card tile accent"><div class="label">Best SSL model</div><div class="value" id="hero-value">–</div><div class="note" id="hero-note"></div></div>
+      <div class="card tile"><div class="label">Best SL baseline</div><div class="value" id="hero-baseline">–</div><div class="note" id="hero-baseline-note"></div></div>
+      <div class="card tile"><div class="label">On the never-labeled trajectory</div><div class="value" id="hero-lc">–</div><div class="note" id="hero-lc-note"></div></div>
+      <div class="card tile"><div class="label">No-skill reference</div><div class="value" id="hero-noskill">–</div><div class="note">Always predict the training mean</div></div>
+    </div>
+    <p class="tiny" style="margin-top:10px">Mean absolute error per run on 90 held-out test runs, averaged over 10 seeds. Lower is better.</p>
+  </div>
+</section>
+
+<!-- ============================================================ MOTIVATION -->
+<section id="motivation">
+  <div class="container">
+    <div class="eyebrow">01 · Motivation</div>
+    <h2>A test platform that wears its own tires</h2>
+
+    <div class="motivation-grid">
+      <div class="prose">
+        <p>
+          Before a new car model goes into production, its driver-assistance systems are tested on the
+          road against a realistic target: a soft dummy car carried by the <strong>UFO</strong>
+          (ultra-flat overrunable) platform, a driverless robot that the test vehicle can run over
+          without damage.
+        </p>
+        <p>
+          The platform drives on small solid rubber tires. Hard braking and steering wear
+          <strong>flat spots</strong> into them, which degrade its driving behavior and shorten
+          its service life. Today the wear is known only from manual measurements between test
+          campaigns: the tires come off, are scanned, and the platform stands still. Meanwhile, it
+          records its sensor signals in every single run.
+        </p>
+        <p>
+          <strong>The goal:</strong> estimate tire wear from those recordings, so that tires are
+          replaced when their condition requires it instead of on a fixed schedule.
+        </p>
+      </div>
+
+      <figure class="card tire-figure">
+        <svg viewBox="0 0 260 186" role="img" aria-label="Tire cross-section: the nominal circular profile and a worn profile with a flat spot; the wear is the depth of the flat spot.">
+          <path class="tire-removed" d="M 85.46 140 A 70 70 0 0 0 174.54 140 Z" />
+          <path class="tire-worn" d="M 85.46 140 A 70 70 0 1 1 174.54 140 Z" />
+          <circle class="tire-hub" cx="130" cy="86" r="24" />
+          <circle class="tire-nominal" cx="130" cy="86" r="70" />
+          <line class="tire-dim" x1="130" y1="141.5" x2="130" y2="154.5" />
+          <line class="tire-tick" x1="121" y1="156" x2="139" y2="156" />
+          <text class="tire-label" x="130" y="178" text-anchor="middle">wear</text>
+        </svg>
+        <div class="legend" style="justify-content:center">
+          <span><i class="key-dash"></i>nominal profile</span>
+          <span><i class="key-line" style="background:var(--ink)"></i>worn profile</span>
+        </div>
+        <figcaption class="tiny">Tire wear is the largest deviation of the worn profile from the nominal circle: the depth of the flat spot (exaggerated here).</figcaption>
+      </figure>
+    </div>
+
+    <div class="grid cols-3 problems">
+      <div class="card problem">
+        <div class="problem-num">1</div>
+        <h3>No wear sensor</h3>
+        <p>A flat spot shows up only indirectly in the signals, buried under the much larger variation from trajectory, speed and road surface.</p>
+      </div>
+      <div class="card problem">
+        <div class="problem-num">2</div>
+        <h3>Few labels</h3>
+        <p>Every label means taking the tires off and scanning them. Only 190 runs carry a wear label, while more than a year of operating data carries none.</p>
+      </div>
+      <div class="card problem">
+        <div class="problem-num">3</div>
+        <h3>Unseen conditions</h3>
+        <p>The model has to estimate wear on a driving maneuver for which no labeled run exists at all.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ DATA -->
+<section id="data">
+  <div class="container">
+    <div class="eyebrow">02 · Data</div>
+    <h2>Sensor time series, few labels</h2>
+
+    <div class="grid cols-3" style="margin-top:26px">
+      <div class="card">
+        <h3>Input</h3>
+        <p class="sub small">Multivariate time series sampled at <strong>100 Hz</strong> with <strong>3 features</strong>: vertical acceleration and the rotational speed of both front wheels.</p>
+      </div>
+      <div class="card">
+        <h3>Windowing</h3>
+        <p class="sub small">Each run is cut into <strong>5 s windows</strong> (500 time steps). The model predicts wear per window; the prediction for a run is the mean over its windows.</p>
+      </div>
+      <div class="card">
+        <h3>Label</h3>
+        <p class="sub small">Tire wear in <strong>mm</strong>, one value per run: the depth of the flat spot, taken from the more worn of the two front tires.</p>
+      </div>
+    </div>
+
+    <div class="card split-card">
+      <div class="split-text">
+        <h3>A deliberately hard split</h3>
+        <p class="sub small">Two driving maneuvers: <strong class="sc-ink">SystemCheck (SC)</strong>, a slow check run at about 25 km/h, and <strong class="lc-ink">LaneChange (LC)</strong>, a lane change at about 50 km/h. Training uses labeled SC runs only. The test split adds LC, so every model has to transfer to a maneuver it has never seen with a label, at wear levels that do not occur in training.</p>
+      </div>
+      <div class="split-matrix" role="table" aria-label="Runs per split and trajectory">
+        <div role="row" class="sm-row sm-head">
+          <span role="columnheader"></span>
+          <span role="columnheader"><i class="key-dot" style="background:var(--sc)"></i>SC</span>
+          <span role="columnheader"><i class="key-dot" style="background:var(--lc)"></i>LC</span>
+        </div>
+        <div role="row" class="sm-row">
+          <span role="rowheader">Train</span>
+          <span role="cell" class="sm-cell sc"><b id="n-train-sc">100</b> runs</span>
+          <span role="cell" class="sm-cell none">no label</span>
+        </div>
+        <div role="row" class="sm-row">
+          <span role="rowheader">Test</span>
+          <span role="cell" class="sm-cell sc"><b id="n-test-sc">70</b> runs</span>
+          <span role="cell" class="sm-cell lc"><b id="n-test-lc">20</b> runs</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ METHODS -->
+<section id="methods">
+  <div class="container">
+    <div class="eyebrow">03 · Methods</div>
+    <h2>Two ways to learn: self-supervised or supervised</h2>
+    <p class="lede">
+      <strong>SSL</strong> first learns a representation from the unlabeled data, then fine-tunes it
+      on the few labels. <strong>SL</strong> learns from the labeled data only, and the unlabeled data stays unused.
+    </p>
+
+    <div class="card method-card">
+      <div class="filters" style="margin-top:0">
+        <div class="seg seg-lg" role="group" aria-label="Learning paradigm" id="paradigm-switch">
+          <button type="button" data-paradigm="ssl" aria-pressed="true">SSL · self-supervised</button>
+          <button type="button" data-paradigm="sl" aria-pressed="false">SL · supervised</button>
+        </div>
+        <div class="seg" role="group" aria-label="Method" id="method-switch"></div>
+      </div>
+
+      <div id="pipeline" class="pipeline" role="img" aria-label="Training pipeline of the selected method"></div>
+
+      <div class="loss-box" id="loss-box" aria-live="polite"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ RESULTS -->
+<section id="results">
+  <div class="container">
+    <div class="eyebrow">04 · Results</div>
+    <h2>Pretrained models beat every supervised baseline</h2>
+    <p class="lede">Mean absolute error per run on the 90 test runs, best configuration per method, averaged over 10 seeds. Lower is better.</p>
+
+    <div class="card chart-card" style="margin-top:26px">
+      <div class="chart-head">
+        <h3>Test error by trajectory</h3>
+        <div class="legend">
+          <span><i class="key-dot" style="background:var(--sc)"></i>Test SC · 70 runs</span>
+          <span><i class="key-dot" style="background:var(--lc)"></i>Test LC · 20 runs</span>
+          <span><i class="key-diamond"></i>Test total · 90 runs</span>
+        </div>
+      </div>
+      <div id="chart-results" class="chart" role="img" aria-label="Test MAE per method, split by trajectory, sorted by the total test error"></div>
+      <p class="caption">Sorted by the total test error. The no-skill reference predicts the training mean for every run; a model below it on LC has learned nothing useful there. Hover a point for its spread over the 10 seeds.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ EXPLORER -->
+<section id="explorer">
+  <div class="container">
+    <div class="eyebrow">05 · Prediction explorer</div>
+    <h2>Compare any two models run by run</h2>
+    <p class="lede">Each point is one run: its measured wear against the model's prediction. Points on the diagonal are perfect. Click a test run to see the predictions of its individual 5 s windows.</p>
+
+    <div class="filters">
+      <div class="field">Split
+        <div class="seg" role="group" aria-label="Data split" id="explorer-split">
+          <button type="button" data-split="test" aria-pressed="true">Test · 90 runs</button>
+          <button type="button" data-split="train" aria-pressed="false">Train · 100 runs</button>
+        </div>
+      </div>
+      <div class="field"><label for="explorer-seed">Seeds</label>
+        <select id="explorer-seed"></select>
+      </div>
+      <div class="legend">
+        <span><i class="key-dot" style="background:var(--sc)"></i>SC</span>
+        <span><i class="key-dot" style="background:var(--lc)"></i>LC</span>
+        <span><i class="key-line" style="background:var(--ink-2)"></i>Perfect prediction</span>
+      </div>
+    </div>
+
+    <div class="panels">
+      <div class="card chart-card" data-panel="A">
+        <div class="panel-head">
+          <span class="panel-tag">A</span>
+          <select data-role="method" aria-label="Model A"></select>
+        </div>
+        <div class="tiles" data-role="tiles"></div>
+        <div class="chart" data-role="scatter" role="img" aria-label="Predicted against measured wear, model A"></div>
+      </div>
+      <div class="card chart-card" data-panel="B">
+        <div class="panel-head">
+          <span class="panel-tag">B</span>
+          <select data-role="method" aria-label="Model B"></select>
+        </div>
+        <div class="tiles" data-role="tiles"></div>
+        <div class="chart" data-role="scatter" role="img" aria-label="Predicted against measured wear, model B"></div>
+      </div>
+    </div>
+    <p class="hint" id="explorer-note"></p>
+
+    <div class="card chart-card" style="margin-top:16px" id="run-detail">
+      <div class="run-detail-head">
+        <h3>Window-level predictions</h3>
+        <span class="tiny">Click a point in either chart to choose a test run.</span>
+      </div>
+      <div class="panels">
+        <div><div class="tiny" data-role="detail-label-A">A</div><div class="chart" id="chart-run-A" role="img" aria-label="Window predictions of the selected run, model A"></div></div>
+        <div><div class="tiny" data-role="detail-label-B">B</div><div class="chart" id="chart-run-B" role="img" aria-label="Window predictions of the selected run, model B"></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ FINDINGS -->
+<section id="findings">
+  <div class="container">
+    <div class="eyebrow">06 · Findings</div>
+    <h2>What the experiments show</h2>
+
+    <div class="grid cols-3" style="margin-top:26px">
+      <div class="card finding">
+        <div class="figure">−54 % <small>error</small></div>
+        <h3>Unlabeled data pays off</h3>
+        <p>The best pretrained model reaches 0.28 mm against 0.60 mm for the best supervised method, with the same labeled data, split and evaluation.</p>
+      </div>
+      <div class="card finding">
+        <div class="figure">0.37 <small>vs 0.70 mm on LC</small></div>
+        <h3>The gain is largest where labels end</h3>
+        <p>Pretrained models estimate wear on the LaneChange maneuver without a single labeled LC run. No supervised baseline improves noticeably on a constant guess there.</p>
+      </div>
+      <div class="card finding">
+        <div class="figure">0.28 <small>vs 0.42 mm</small></div>
+        <h3>Relevant data beats more data</h3>
+        <p>Pretraining on unlabeled recordings of the two target maneuvers beat pretraining on all 45 maneuver types the platform drives.</p>
+      </div>
+    </div>
+
+    <p class="callout">
+      <strong>Scope.</strong> Small encoders, a short pretraining budget on one GPU, and a test split of 90 runs:
+      differences of a few hundredths of a millimeter lie within its noise.
+    </p>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="container">
+    <div class="grid cols-2">
+      <div>
+        <h3>About</h3>
+        <p>Master's thesis by Anh Khoa Pham at the Institute of Mechatronic Systems (imes), Leibniz Universität Hannover.</p>
+      </div>
+      <div>
+        <h3>What is published here</h3>
+        <p>Results only: metrics, per-run predictions and labels. Raw recordings and trained weights are not published.</p>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/vendor/plotly-basic-2.35.2.min.js"></script>
+<script type="module" src="assets/js/main.js"></script>
+</body>
+</html>
